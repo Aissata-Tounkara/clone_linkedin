@@ -1,5 +1,8 @@
-import 'package:flutter/material.dart';
-import 'sreens/accueil/home_screen.dart';
+ import 'package:flutter/material.dart';
+//import 'package:linkedin_clone/sreens/entreprise/homme1_screen.dart';
+ import 'package:linkedin_clone/sreens/go_route.dart';
+//import 'sreens/accueil/home_screen.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -9,7 +12,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'LinkedIn Clone',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -17,7 +20,8 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Roboto',
         scaffoldBackgroundColor: const Color(0xFFF4F2EE),
       ),
-      home: const HomeScreen(),
+      routerConfig: appGorouter,
     );
+    
   }
 }

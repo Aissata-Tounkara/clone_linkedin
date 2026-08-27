@@ -76,7 +76,7 @@ class MethodPodcast extends StatelessWidget {
                 ],
             ),
           )),
-          const SizedBox(height: 8),
+          const SizedBox(width: 8),
           Row(
             children: [
               Icon(Icons.thumb_up,color: Colors.blue),
@@ -86,11 +86,14 @@ class MethodPodcast extends StatelessWidget {
               Text("$_comm commentaires")
             ],
           ),
+           Container(
+              height: 1,
+              color: Colors.black,
+            ),
           Container(
             margin: EdgeInsets.only(top: 8),
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border.all(color: Colors.black)
             ),
             child: Column(
               mainAxisAlignment: .spaceBetween,

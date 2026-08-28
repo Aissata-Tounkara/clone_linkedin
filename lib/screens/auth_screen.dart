@@ -51,6 +51,8 @@ class _AuthScreenState extends State<AuthScreen> {
         : isSignup
         ? 'Inscrivez-vous sur LinkedIn, c’est gratuit.'
         : 'Ravi de vous revoir';
+    final titleSize =
+        MediaQuery.sizeOf(context).width < 380 ? 22.0 : 26.0;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -70,10 +72,11 @@ class _AuthScreenState extends State<AuthScreen> {
                     Text(
                       title,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 32,
-                        height: 1.15,
-                        fontWeight: FontWeight.w700,
+                      style: TextStyle(
+                        fontSize: titleSize,
+                        height: 1.2,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.3,
                         color: AppColors.text,
                       ),
                     ),

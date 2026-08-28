@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../data/local_data.dart';
-import '../models/post.dart';
+import '../data/repository.dart';
+import '../theme/app_tokens.dart';
 import '../widgets/avatar.dart';
+import '../widgets/li_widgets.dart';
+import '../widgets/me_panel.dart';
 import '../widgets/post_card.dart';
-import '../widgets/responsive_content.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -15,177 +16,230 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> {
-  void _message(String text) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  final _scroll = ScrollController();
+  final _repo = Repository.instance;
+  bool _loadingMore = false;
+  int _visible = 6;
 
-  void _comments(Post post) => showModalBottomSheet<void>(
-    context: context,
-    showDragHandle: true,
-    builder: (_) => Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scroll.removeListener(_onScroll);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scroll.position.pixels >
+        _scroll.position.maxScrollExtent - 600) {
+      _loadMore();
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore) return;
+    if (_visible >= _repo.feed.length + 20) return;
+    setState(() => _loadingMore = true);
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    if (_visible >= _repo.feed.length) _repo.loadMore();
+    if (!mounted) return;
+    setState(() {
+      _visible += 5;
+      _loadingMore = false;
+    });
+  }
+
+  Future<void> _refresh() async {
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    if (mounted) setState(() => _visible = 6);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      drawer: const MePanel(),
+      appBar: _FeedAppBar(repo: _repo),
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: AnimatedBuilder(
+          animation: _repo,
+          builder: (context, _) {
+            final posts = _repo.feed;
+            final count = _visible.clamp(0, posts.length);
+            return ListView.builder(
+              controller: _scroll,
+              padding: EdgeInsets.zero,
+              itemCount: count + 3,
+              itemBuilder: (context, index) {
+                if (index == 0) return const _Composer();
+                if (index == 1) return const LiSortHeader();
+                final postIndex = index - 2;
+                if (postIndex < count) {
+                  return Column(
+                    children: [
+                      PostCard(
+                        post: posts[postIndex],
+                        onOpenPost: () =>
+                            context.push('/post/${posts[postIndex].id}'),
+                        onOpenAuthor: () => _openAuthor(posts[postIndex].authorId),
+                      ),
+                      const LiBlockGap(),
+                    ],
+                  );
+                }
+                // pied de liste
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: _loadingMore
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            'Vous êtes à jour 🎉',
+                            style: TextStyle(color: LiColors.textSecondary),
+                          ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  void _openAuthor(String id) {
+    if (id.isEmpty) return;
+    context.push(id == 'me' ? '/profile' : '/u/$id');
+  }
+}
+
+class _FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _FeedAppBar({required this.repo});
+  final Repository repo;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(56);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      titleSpacing: 8,
+      title: Row(
         children: [
-          Text('Commentaires', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-          const Text('Soyez le premier à partager votre avis.'),
-          const SizedBox(height: 18),
-          TextField(
-            decoration: InputDecoration(
-              hintText: 'Ajouter un commentaire',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
+          Builder(
+            builder: (context) => GestureDetector(
+              onTap: () => Scaffold.of(context).openDrawer(),
+              child: const CurrentUserAvatar(radius: 16),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => context.push('/search'),
+              child: Container(
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: LiColors.searchField,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.search, size: 20, color: LiColors.textSecondary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Rechercher',
+                      style: TextStyle(color: LiColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          AnimatedBuilder(
+            animation: repo,
+            builder: (context, _) => IconButton(
+              onPressed: () => context.push('/messaging'),
+              icon: LiBadge(
+                count: repo.unreadMessages,
+                child: const Icon(Icons.chat_bubble_outline),
               ),
             ),
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
+}
+
+class _Composer extends StatelessWidget {
+  const _Composer();
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      titleSpacing: 14,
-      title: InkWell(
-        onTap: () => context.go('/search'),
-        child: Container(
-          height: 38,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEDF3F8),
-            borderRadius: BorderRadius.circular(5),
-          ),
-          child: const Row(
+  Widget build(BuildContext context) {
+    return Container(
+      color: LiColors.surface,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+      child: Column(
+        children: [
+          Row(
             children: [
-              Icon(Icons.search, color: Color(0xFF536471)),
-              SizedBox(width: 8),
+              const CurrentUserAvatar(radius: 18),
+              const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  'Rechercher',
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 15, color: Color(0xFF536471)),
+                child: GestureDetector(
+                  onTap: () => context.push('/create-post'),
+                  child: Container(
+                    height: 40,
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: LiColors.textTertiary),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Text(
+                      'Créer un post',
+                      style: TextStyle(color: LiColors.textSecondary),
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-      ),
-      actions: [
-        IconButton(
-          onPressed: () => context.push('/messaging'),
-          icon: const Icon(Icons.chat_bubble_outline, color: Color(0xFF1F1F1F)),
-        ),
-        PopupMenuButton<String>(
-          onSelected: (route) => context.push(route),
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: '/profile', child: Text('Profil')),
-            PopupMenuItem(value: '/jobs', child: Text('Emplois')),
-            PopupMenuItem(
-              value: '/notifications',
-              child: Text('Notifications'),
-            ),
-          ],
-        ),
-      ],
-    ),
-    body: ListView.builder(
-      itemCount: LocalData.posts.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return ResponsiveContent(
-            child: _Composer(onMessage: () => context.push('/create-post')),
-          );
-        }
-        final post = LocalData.posts[index - 1];
-        return TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: 1),
-          duration: Duration(milliseconds: 220 + index * 70),
-          curve: Curves.easeOut,
-          builder: (context, value, child) => Opacity(
-            opacity: value,
-            child: Transform.translate(
-              offset: Offset(0, 12 * (1 - value)),
-              child: child,
-            ),
-          ),
-          child: ResponsiveContent(
-            child: PostCard(
-              post: post,
-              onTap: () => context.push('/post/${post.id}'),
-              onLike: () => setState(() => post.liked = !post.liked),
-              onComment: () => _comments(post),
-              onShare: () => _message('Publication partagée (simulation)'),
-            ),
-          ),
-        );
-      },
-    ),
-  );
-}
-
-class _Composer extends StatelessWidget {
-  const _Composer({required this.onMessage});
-  final VoidCallback onMessage;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    color: Theme.of(context).colorScheme.surface,
-    margin: const EdgeInsets.only(bottom: 9),
-    padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-    child: Column(
-      children: [
-        Row(
-          children: [
-            const CurrentUserAvatar(),
-            const SizedBox(width: 10),
-            Expanded(
-              child: InkWell(
-                onTap: onMessage,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 11,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFF777777)),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Text(
-                    'Commencer un post',
-                    style: TextStyle(color: Color(0xFF555555)),
-                  ),
-                ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: const [
+              _ComposerAction(
+                icon: Icons.image,
+                label: 'Photo',
+                color: Color(0xFF378FE9),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        const Wrap(
-          alignment: WrapAlignment.spaceAround,
-          runSpacing: 6,
-          children: [
-            _ComposerAction(
-              icon: Icons.image_outlined,
-              label: 'Photo',
-              color: Color(0xFF378FE9),
-            ),
-            _ComposerAction(
-              icon: Icons.videocam_outlined,
-              label: 'Vidéo',
-              color: Color(0xFF5F9B41),
-            ),
-            _ComposerAction(
-              icon: Icons.article_outlined,
-              label: 'Article',
-              color: Color(0xFFE16745),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
+              _ComposerAction(
+                icon: Icons.smart_display,
+                label: 'Vidéo',
+                color: Color(0xFF5F9B41),
+              ),
+              _ComposerAction(
+                icon: Icons.article,
+                label: 'Rédiger un article',
+                color: Color(0xFFE06847),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ComposerAction extends StatelessWidget {
@@ -197,12 +251,20 @@ class _ComposerAction extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
+
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Icon(icon, color: color),
-      const SizedBox(width: 5),
-      Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-    ],
-  );
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: () => context.push('/create-post'),
+      icon: Icon(icon, color: color, size: 20),
+      label: Text(
+        label,
+        style: TextStyle(
+          color: LiColors.textSecondary,
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
 }

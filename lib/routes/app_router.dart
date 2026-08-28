@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../data/mock_data.dart';
+import '../data/repository.dart';
 import '../pages/conversation_page.dart';
 import '../pages/auth_page.dart';
 import '../pages/create_post_page.dart';
@@ -12,6 +12,9 @@ import '../pages/notifications_page.dart';
 import '../pages/post_detail_page.dart';
 import '../pages/profile_page.dart';
 import '../pages/search_page.dart';
+import '../screens/edit_profile_screen.dart';
+import '../screens/job_detail_screen.dart';
+import '../screens/new_message_screen.dart';
 import '../widgets/linkedin_bottom_navigation_bar.dart';
 
 class AppRouter {
@@ -80,25 +83,52 @@ class AppRouter {
       GoRoute(
         path: '/conversation/:id',
         builder: (context, state) {
-          final id = int.tryParse(state.pathParameters['id'] ?? '');
-          if (id == null || id < 0 || id >= MockData.conversations.length) {
-            return _notFound(context, state);
-          }
-          return ConversationPage(conversation: MockData.conversations[id]);
+          final raw = state.pathParameters['id'] ?? '';
+          final conversations = Repository.instance.conversations;
+          final byIndex = int.tryParse(raw);
+          final conversation =
+              Repository.instance.conversationById(raw) ??
+              (byIndex != null && byIndex >= 0 && byIndex < conversations.length
+                  ? conversations[byIndex]
+                  : null);
+          if (conversation == null) return _notFound(context, state);
+          return ConversationPage(conversation: conversation);
         },
       ),
       GoRoute(
         path: '/post/:id',
         builder: (context, state) {
-          final id = state.pathParameters['id'];
-          final matches = MockData.posts.where((post) => post.id == id);
-          if (matches.isEmpty) return _notFound(context, state);
-          return PostDetailPage(post: matches.first);
+          final post = Repository.instance.postById(state.pathParameters['id'] ?? '');
+          if (post == null) return _notFound(context, state);
+          return PostDetailPage(post: post);
         },
+      ),
+      GoRoute(
+        path: '/u/:id',
+        builder: (context, state) =>
+            ProfilePage(userId: state.pathParameters['id']),
       ),
       GoRoute(
         path: '/create-post',
         builder: (context, state) => const CreatePostPage(),
+      ),
+      GoRoute(
+        path: '/edit-profile',
+        builder: (context, state) => const EditProfileScreen(),
+      ),
+      GoRoute(
+        path: '/job/:id',
+        builder: (context, state) {
+          final job = Repository.instance.jobById(
+            state.pathParameters['id'] ?? '',
+          );
+          if (job == null) return _notFound(context, state);
+          return JobDetailScreen(job: job);
+        },
+      ),
+      GoRoute(
+        path: '/messaging/new',
+        builder: (context, state) => const NewMessageScreen(),
       ),
     ],
   );

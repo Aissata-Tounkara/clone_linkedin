@@ -42,6 +42,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('Commencer un post'), findsOneWidget);
+    expect(find.text('Créer un post'), findsOneWidget);
   });
 }
+

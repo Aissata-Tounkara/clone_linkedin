@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../data/local_data.dart';
-import '../models/post.dart';
+import '../data/repository.dart';
 import '../state/current_user.dart';
 import '../widgets/avatar.dart';
 
@@ -22,27 +21,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   void publish() {
     final content = controller.text.trim();
-    final profile = CurrentUser.profile.value;
     if (content.isEmpty) {
       setState(() => _attemptedPublish = true);
       return;
     }
-    LocalData.posts.insert(
-      0,
-      Post(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        author: profile.displayName.isEmpty
-            ? 'Utilisateur'
-            : profile.displayName,
-        role: 'Développeuse Flutter · Maintenant',
-        initials: profile.initials,
-        colorValue: 0xFF0A66C2,
-        time: 'Maintenant',
-        content: content,
-        likes: 0,
-        comments: 0,
-      ),
-    );
+    Repository.instance.addPost(content);
     context.go('/');
     ScaffoldMessenger.of(
       context,

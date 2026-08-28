@@ -1,108 +1,131 @@
 import 'package:flutter/material.dart';
-import '../data/local_data.dart';
-import '../widgets/notification_tile.dart';
+import 'package:go_router/go_router.dart';
+
+import '../data/repository.dart';
+import '../models/app_notification.dart';
+import '../widgets/avatar.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/li_widgets.dart';
+import '../widgets/notification_tile.dart';
+import '../theme/app_tokens.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  String _selectedFilter = 'Tout';
+  final _repo = Repository.instance;
+  String _filter = 'Tout';
 
-  bool _matchesFilter(String text) => switch (_selectedFilter) {
-    'Emplois' => text.contains('offre') || text.contains('profil'),
-    'Mes posts' => text.contains('publication'),
-    'Mentions' => text.contains('commenté'),
+  static const _filters = ['Tout', 'Mes publications', 'Mentions', 'Emplois'];
+
+  bool _match(AppNotification n) => switch (_filter) {
+    'Emplois' => n.type == NotifType.job,
+    'Mes publications' =>
+      n.type == NotifType.reaction || n.type == NotifType.comment ||
+          n.type == NotifType.post,
+    'Mentions' => n.type == NotifType.mention,
     _ => true,
   };
 
   @override
   Widget build(BuildContext context) {
-    final notifications = LocalData.notifications
-        .where((item) => _matchesFilter(item.text.toLowerCase()))
-        .toList();
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: 12,
-        title: Container(
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEDF3F8),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.search),
-              SizedBox(width: 10),
-              Text('Rechercher', style: TextStyle(color: Color(0xFF536471))),
-            ],
-          ),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Tout marquer comme lu',
-            onPressed: () => setState(() {
-              for (final item in LocalData.notifications) {
-                item.read = true;
-              }
-            }),
-            icon: const Icon(Icons.done_all),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          SizedBox(
-            height: 68,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              children: ['Tout', 'Emplois', 'Mes posts', 'Mentions']
-                  .map(
-                    (filter) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(filter),
-                        selected: _selectedFilter == filter,
-                        selectedColor: const Color(0xFF057642),
-                        labelStyle: TextStyle(
-                          color: _selectedFilter == filter
-                              ? Colors.white
-                              : const Color(0xFF4A4A4A),
-                          fontWeight: FontWeight.w600,
-                        ),
-                        onSelected: (_) =>
-                            setState(() => _selectedFilter = filter),
-                      ),
-                    ),
-                  )
-                  .toList(),
+        titleSpacing: 8,
+        title: Row(
+          children: [
+            GestureDetector(
+              onTap: () => context.push('/profile'),
+              child: const CurrentUserAvatar(radius: 16),
             ),
-          ),
-          Expanded(
-            child: notifications.isEmpty
-                ? const EmptyState(
-                    icon: Icons.notifications_off_outlined,
-                    title: 'Aucune notification',
-                    message: 'Vos nouvelles interactions apparaîtront ici.',
-                  )
-                : ListView.builder(
-                    itemCount: notifications.length,
-                    itemBuilder: (_, index) {
-                      final notification = notifications[index];
-                      return NotificationTile(
-                        notification: notification,
-                        onTap: () => setState(() => notification.read = true),
-                      );
-                    },
-                  ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: Container(
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: LiColors.searchField,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.search,
+                        size: 20, color: LiColors.textSecondary),
+                    const SizedBox(width: 8),
+                    Text('Rechercher',
+                        style: TextStyle(color: LiColors.textSecondary)),
+                  ],
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Tout marquer comme lu',
+              onPressed: _repo.markAllNotificationsRead,
+              icon: const Icon(Icons.done_all),
+            ),
+          ],
+        ),
+      ),
+      body: AnimatedBuilder(
+        animation: _repo,
+        builder: (context, _) {
+          final items = _repo.notifications.where(_match).toList();
+          return Column(
+            children: [
+              LiChipsRow(
+                options: _filters,
+                selected: _filter,
+                onSelected: (v) => setState(() => _filter = v),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: items.isEmpty
+                    ? const EmptyState(
+                        icon: Icons.notifications_off_outlined,
+                        title: 'Aucune notification',
+                        message: 'Vos interactions apparaîtront ici.',
+                      )
+                    : ListView.separated(
+                        itemCount: items.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (_, i) => NotificationTile(
+                          notification: items[i],
+                          onTap: () => _repo.markNotificationRead(items[i]),
+                          onCta: () {
+                            _repo.markNotificationRead(items[i]);
+                            _handleCta(items[i]);
+                          },
+                        ),
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
+  }
+
+  void _handleCta(AppNotification n) {
+    switch (n.type) {
+      case NotifType.job:
+        context.push('/jobs');
+      case NotifType.connection:
+        context.push('/network');
+      case NotifType.comment:
+      case NotifType.mention:
+      case NotifType.reaction:
+      case NotifType.post:
+      case NotifType.birthday:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(n.cta ?? 'Ouvert'),
+            duration: const Duration(milliseconds: 900),
+          ),
+        );
+    }
   }
 }

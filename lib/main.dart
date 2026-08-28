@@ -1,27 +1,16 @@
- import 'package:flutter/material.dart';
-//import 'package:linkedin_clone/sreens/entreprise/homme1_screen.dart';
- import 'package:linkedin_clone/sreens/go_route.dart';
-//import 'sreens/accueil/home_screen.dart';
+import 'package:flutter/material.dart';
+import 'routes/app_router.dart';
+import 'theme/app_theme.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const LinkedInCloneApp());
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
+class LinkedInCloneApp extends StatelessWidget {
+  const LinkedInCloneApp({super.key});
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'LinkedIn Clone',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-        scaffoldBackgroundColor: const Color(0xFFF4F2EE),
-      ),
-      routerConfig: appGorouter,
-    );
-    
-  }
+  Widget build(BuildContext context) => MaterialApp.router(
+    title: 'LinkedIn Clone',
+    debugShowCheckedModeBanner: false,
+    theme: AppTheme.light,
+    routerConfig: AppRouter.router,
+  );
 }

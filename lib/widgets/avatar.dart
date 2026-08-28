@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../state/current_user.dart';
 
 class InitialAvatar extends StatelessWidget {
   const InitialAvatar({
@@ -23,4 +24,21 @@ class InitialAvatar extends StatelessWidget {
       ),
     ),
   );
+}
+
+class CurrentUserAvatar extends StatelessWidget {
+  const CurrentUserAvatar({super.key, this.radius = 22});
+
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) =>
+      ValueListenableBuilder<CurrentUserProfile>(
+        valueListenable: CurrentUser.profile,
+        builder: (context, profile, _) => InitialAvatar(
+          initials: profile.initials,
+          colorValue: 0xFF0A66C2,
+          radius: radius,
+        ),
+      );
 }

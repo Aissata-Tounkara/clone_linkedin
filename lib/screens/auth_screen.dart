@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../state/current_user.dart';
 import '../theme/app_theme.dart';
 
 enum AuthMode { welcome, login, signup }
@@ -15,21 +16,30 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   void _submit() {
-    if (_formKey.currentState?.validate() ?? false) context.go('/');
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (widget.mode == AuthMode.signup) {
+      CurrentUser.update(
+        firstName: _firstNameController.text,
+        lastName: _lastNameController.text,
+      );
+    }
+    context.go('/');
   }
 
   @override
@@ -78,11 +88,15 @@ class _AuthScreenState extends State<AuthScreen> {
                     ] else ...[
                       if (isSignup) ...[
                         _field(
-                          controller: _nameController,
-                          label: 'Nom complet',
-                          validator: (value) => value == null || value.trim().isEmpty
-                              ? 'Saisissez votre nom.'
-                              : null,
+                          controller: _firstNameController,
+                          label: 'Prénom',
+                          validator: (_) => null,
+                        ),
+                        const SizedBox(height: 16),
+                        _field(
+                          controller: _lastNameController,
+                          label: 'Nom',
+                          validator: (_) => null,
                         ),
                         const SizedBox(height: 16),
                       ],
@@ -90,7 +104,8 @@ class _AuthScreenState extends State<AuthScreen> {
                         controller: _emailController,
                         label: 'E-mail',
                         keyboardType: TextInputType.emailAddress,
-                        validator: (value) => value != null && value.contains('@')
+                        validator: (value) =>
+                            value != null && value.contains('@')
                             ? null
                             : 'Saisissez une adresse e-mail valide.',
                       ),
@@ -120,14 +135,19 @@ class _AuthScreenState extends State<AuthScreen> {
                         Align(
                           alignment: Alignment.centerLeft,
                           child: TextButton(
-                            onPressed: () {},
+                            onPressed: () => _showDemoMessage(
+                              context,
+                              'La réinitialisation du mot de passe est une fonctionnalité de démonstration.',
+                            ),
                             child: const Text('Mot de passe oublié ?'),
                           ),
                         ),
                       const SizedBox(height: 10),
                       FilledButton(
                         onPressed: _submit,
-                        child: Text(isSignup ? 'Accepter et s’inscrire' : 'S’identifier'),
+                        child: Text(
+                          isSignup ? 'Accepter et s’inscrire' : 'S’identifier',
+                        ),
                       ),
                       const SizedBox(height: 16),
                       _GoogleButton(onPressed: () => context.go('/')),
@@ -140,10 +160,16 @@ class _AuthScreenState extends State<AuthScreen> {
                     const Text(
                       'Vous cherchez à créer une page pour une entreprise ?',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () => _showDemoMessage(
+                        context,
+                        'L’aide est indisponible dans cette maquette front-end.',
+                      ),
                       child: const Text('Obtenir de l’aide'),
                     ),
                   ],
@@ -184,16 +210,19 @@ class _AuthScreenState extends State<AuthScreen> {
   );
 }
 
+void _showDemoMessage(BuildContext context, String message) =>
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+
 class _Header extends StatelessWidget {
   const _Header({required this.showActions});
   final bool showActions;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      const _LinkedInLogo(),
-      const Spacer(),
-      if (showActions) ...[
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final actions = [
         OutlinedButton(
           onPressed: () => context.go('/login'),
           child: const Text('S’identifier'),
@@ -203,8 +232,21 @@ class _Header extends StatelessWidget {
           onPressed: () => context.go('/signup'),
           child: const Text('S’inscrire'),
         ),
-      ],
-    ],
+      ];
+
+      if (!showActions) return const _LinkedInLogo();
+      if (constraints.maxWidth < 520) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            const _LinkedInLogo(),
+            const SizedBox(height: 12),
+            Row(children: actions),
+          ],
+        );
+      }
+      return Row(children: [const _LinkedInLogo(), const Spacer(), ...actions]);
+    },
   );
 }
 
@@ -218,7 +260,10 @@ class _LinkedInLogo extends StatelessWidget {
         fontSize: 27,
         fontWeight: FontWeight.w700,
       ),
-      children: [TextSpan(text: 'Linked'), TextSpan(text: 'in')],
+      children: [
+        TextSpan(text: 'Linked'),
+        TextSpan(text: 'in'),
+      ],
     ),
   );
 }
@@ -231,11 +276,11 @@ class _GoogleButton extends StatelessWidget {
     onPressed: onPressed,
     icon: const Text(
       'G',
-    style: TextStyle(
-      color: Color(0xFF4285F4),
-      fontSize: 23,
-      fontWeight: FontWeight.w700,
-    ),
+      style: TextStyle(
+        color: Color(0xFF4285F4),
+        fontSize: 23,
+        fontWeight: FontWeight.w700,
+      ),
     ),
     label: const Text('Continuer avec Google'),
   );
@@ -258,8 +303,9 @@ class _SwitchAuth extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final login = mode == AuthMode.login;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Text(login ? 'Nouveau sur LinkedIn ?' : 'Déjà inscrit(e) ?'),
         TextButton(

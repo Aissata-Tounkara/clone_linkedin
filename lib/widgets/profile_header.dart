@@ -35,22 +35,6 @@ class ProfileHeader extends StatelessWidget {
           icon: const Icon(Icons.edit, color: Colors.white),
         ),
       ),
-      Positioned(
-        left: 18,
-        top: 224,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              name,
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            Text(headline),
-          ],
-        ),
-      ),
     ],
   );
 }

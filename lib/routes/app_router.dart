@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../data/mock_data.dart';
+import '../pages/conversation_page.dart';
 import '../pages/auth_page.dart';
+import '../pages/create_post_page.dart';
+import '../pages/home_page.dart';
+import '../pages/jobs_page.dart';
+import '../pages/messaging_page.dart';
+import '../pages/network_page.dart';
+import '../pages/notifications_page.dart';
+import '../pages/post_detail_page.dart';
 import '../pages/profile_page.dart';
+import '../pages/search_page.dart';
 import '../widgets/linkedin_bottom_navigation_bar.dart';
 
 class AppRouter {
@@ -43,11 +53,52 @@ class AppRouter {
           ),
         ),
         routes: [
+          GoRoute(path: '/', builder: (context, state) => const HomePage()),
+          GoRoute(
+            path: '/search',
+            builder: (context, state) => const SearchPage(),
+          ),
+          GoRoute(
+            path: '/network',
+            builder: (context, state) => const NetworkPage(),
+          ),
+          GoRoute(path: '/jobs', builder: (context, state) => const JobsPage()),
+          GoRoute(
+            path: '/notifications',
+            builder: (context, state) => const NotificationsPage(),
+          ),
+          GoRoute(
+            path: '/messaging',
+            builder: (context, state) => const MessagingPage(),
+          ),
           GoRoute(
             path: '/profile',
             builder: (context, state) => const ProfilePage(),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/conversation/:id',
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '');
+          if (id == null || id < 0 || id >= MockData.conversations.length) {
+            return _notFound(context, state);
+          }
+          return ConversationPage(conversation: MockData.conversations[id]);
+        },
+      ),
+      GoRoute(
+        path: '/post/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          final matches = MockData.posts.where((post) => post.id == id);
+          if (matches.isEmpty) return _notFound(context, state);
+          return PostDetailPage(post: matches.first);
+        },
+      ),
+      GoRoute(
+        path: '/create-post',
+        builder: (context, state) => const CreatePostPage(),
       ),
     ],
   );

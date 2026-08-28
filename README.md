@@ -1,17 +1,21 @@
-# linkedin_clone
+# LinkedIn Clone
 
-A new Flutter project.
+Maquette front-end Flutter inspirée de LinkedIn. Elle présente un parcours d’authentification, un fil d’accueil, le réseau, la création de publications, les notifications, les emplois et un profil.
 
-## Getting Started
+## Périmètre
 
-This project is a starting point for a Flutter application.
+Le projet fonctionne uniquement côté interface : il n’utilise ni API, ni base de données, ni authentification réelle. Les actions affichent des retours visuels et les données sont locales.
 
-A few resources to get you started if this is your first Flutter project:
+## Lancer le projet
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```bash
+flutter pub get
+flutter run
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Pour vérifier le projet :
+
+```bash
+flutter analyze
+flutter test
+```
